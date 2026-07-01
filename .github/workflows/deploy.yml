@@ -12,6 +12,11 @@ env:
   CONTAINER_NAME: toolsmart-admin
   IMAGE_TAG: ${{ github.sha }}
 
+run: |
+  docker build \
+    --build-arg VITE_API_URL=${{ vars.VITE_API_URL }} \
+    -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+
 jobs:
   deploy:
     name: Build, Publish & Deploy
