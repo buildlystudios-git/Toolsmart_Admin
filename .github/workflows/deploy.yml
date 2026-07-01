@@ -5,17 +5,12 @@ on:
 
 env:
   AWS_REGION: ap-south-1
-  ECR_REPOSITORY: toolsmart-admin #${{ secrets.ECR_REPOSITORY }}
+  ECR_REPOSITORY: toolsmart-admin  #${{ secrets.ECR_REPOSITORY }}
   ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
   ECS_SERVICE: toolsmart-admin-service
   TASK_DEFINITION: ecs/task-definition.json
   CONTAINER_NAME: toolsmart-admin
   IMAGE_TAG: ${{ github.sha }}
-
-run: |
-  docker build \
-    --build-arg VITE_API_URL=${{ vars.VITE_API_URL }} \
-    -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
 
 jobs:
   deploy:
@@ -50,6 +45,7 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker build \
+            --build-arg VITE_API_URL=${{ vars.VITE_API_URL }} \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
 
       - name: Push Docker Image
@@ -80,7 +76,8 @@ jobs:
           echo "Service      : $ECS_SERVICE"
           echo "Repository   : $ECR_REPOSITORY"
           echo "Image        : ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG"
-          
+          echo "VITE_API_URL : ${{ vars.VITE_API_URL }}"
+
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
