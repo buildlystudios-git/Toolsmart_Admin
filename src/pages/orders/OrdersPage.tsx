@@ -8,15 +8,21 @@ import { StatusBadge, SearchInput, Pagination, TableSkeleton, EmptyState } from 
 import ConfirmModal from '../../components/modals/ConfirmModal';
 import { format } from 'date-fns';
 
-const ORDER_STATUSES = ['Requested', 'Confirmed', 'In Progress', 'Packed Up', 'Delivered', 'Cancelled'];
+const ORDER_STATUSES = [
+  'PENDING_APPROVAL',
+  'APPROVED',
+  'REJECTED',
+  'PROCESSING',
+  'SHIPPED',
+  'DELIVERED',
+  'CANCELLED'
+];
 
 export default function OrdersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<TableFilters>({ page: 1, limit: 8 });
   const [deleteOrder, setDeleteOrder] = useState<Order | null>(null);
-  const [updateOrder, setUpdateOrder] = useState<Order | null>(null);
-  const [newStatus, setNewStatus] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['orders', filters],
@@ -25,13 +31,16 @@ export default function OrdersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => ordersService.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['orders'] }); toast.success('Order deleted'); setDeleteOrder(null); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      toast.success('Order deleted');
+      setDeleteOrder(null);
+    },
   });
 
-  const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => ordersService.updateStatus(id, status),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['orders'] }); toast.success('Order status updated'); setUpdateOrder(null); },
-  });
+  const formatStatusLabel = (s: string) => {
+    return s.replace('_', ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  };
 
   return (
     <div className="space-y-5">
@@ -51,12 +60,16 @@ export default function OrdersPage() {
           />
           <select
             className="input-field py-2"
-            style={{ width: 160 }}
+            style={{ width: 180 }}
             value={filters.status || ''}
             onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value || undefined, page: 1 }))}
           >
-            <option value="">All Status</option>
-            {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+            <option value="">All Statuses</option>
+            {ORDER_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {formatStatusLabel(s)}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -95,10 +108,20 @@ export default function OrdersPage() {
                       {format(new Date(order.date), 'MMM d, yyyy')}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <button className="btn btn-ghost btn-sm btn-icon" title="View" onClick={() => navigate(`/orders/${order.id}`)}>👁️</button>
-                        <button className="btn btn-ghost btn-sm btn-icon" title="Update Status" onClick={() => { setUpdateOrder(order); setNewStatus(order.orderStatus); }}>✏️</button>
-                        <button className="btn btn-ghost btn-sm btn-icon text-red-500" title="Delete" onClick={() => setDeleteOrder(order)}>🗑️</button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="btn btn-secondary btn-sm font-semibold"
+                          onClick={() => navigate(`/orders/${order.id}`)}
+                        >
+                          View Order
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-sm btn-icon text-red-500 border border-[var(--border)]"
+                          title="Delete"
+                          onClick={() => setDeleteOrder(order)}
+                        >
+                          🗑️
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -116,24 +139,6 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
-
-      {/* Update Status Modal */}
-      {updateOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setUpdateOrder(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl p-6 animate-scale-in" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
-            <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Update Order Status</h3>
-            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Order: <strong>{updateOrder.id}</strong></p>
-            <select className="input-field mb-4" value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
-              {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-            </select>
-            <div className="flex gap-3">
-              <button className="btn btn-secondary flex-1" onClick={() => setUpdateOrder(null)}>Cancel</button>
-              <button className="btn btn-primary flex-1" onClick={() => statusMutation.mutate({ id: updateOrder.id, status: newStatus })}>Update</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <ConfirmModal
         open={!!deleteOrder}

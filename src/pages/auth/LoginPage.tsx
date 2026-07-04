@@ -7,92 +7,38 @@ import { authService } from '../../services/authService';
 import { loginSuccess } from '../../redux/slices/authSlice';
 import { useAppDispatch } from '../../redux/hooks';
 
-const phoneSchema = z.object({
-  phone: z.string().min(10, 'Enter a valid phone number'),
+const loginSchema = z.object({
+  email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
-const otpSchema = z.object({
-  otp: z.string().length(6, 'OTP must be 6 digits'),
-});
-
-type PhoneForm = z.infer<typeof phoneSchema>;
-type OtpForm = z.infer<typeof otpSchema>;
+type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const dispatch = useAppDispatch();
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  const [otpDigits, setOtpDigits] = useState(['', '', '', '']);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const phoneForm = useForm<PhoneForm>({ resolver: zodResolver(phoneSchema) });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
 
-  const startCountdown = () => {
-    setCountdown(30);
-    const interval = setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) { clearInterval(interval); return 0; }
-        return c - 1;
-      });
-    }, 1000);
-  };
-
-  const handleSendOTP = async (data: PhoneForm) => {
+  const handleLogin = async (data: LoginForm) => {
     setIsLoading(true);
     try {
-      await authService.sendOTP(data.phone);
-      setPhone(data.phone);
-      setStep('otp');
-      startCountdown();
-      toast.success('OTP sent! Use 123456 for demo');
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to send OTP');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOTP = async () => {
-    const otp = otpDigits.join('');
-    if (otp.length !== 4) { toast.error('Enter the 4-digit OTP'); return; }
-    setIsLoading(true);
-    try {
-      const { user, token, refreshToken } = await authService.verifyOTP(phone, otp);
+      const { user, token, refreshToken } = await authService.login(data.email, data.password);
       dispatch(loginSuccess({ user, token, refreshToken }));
       toast.success(`Welcome back, ${user.name}!`);
     } catch (e: any) {
-      toast.error(e.message || 'Invalid OTP');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleOtpChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
-    const newDigits = [...otpDigits];
-    newDigits[index] = value.slice(-1);
-    setOtpDigits(newDigits);
-    if (value && index < 3) {
-      document.getElementById(`otp-${index + 1}`)?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      document.getElementById(`otp-${index - 1}`)?.focus();
-    }
-  };
-
-  const handleResendOTP = async () => {
-    if (countdown > 0) return;
-    setIsLoading(true);
-    try {
-      await authService.sendOTP(phone);
-      startCountdown();
-      toast.success('OTP resent!');
-    } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message || 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -105,106 +51,158 @@ export default function LoginPage() {
     >
       {/* Logo */}
       <div className="text-center mb-8">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4" style={{ background: 'var(--accent)' }}>
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4"
+          style={{ background: 'var(--accent)' }}
+        >
           A
         </div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>AdminOS</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          AdminOS
+        </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          {step === 'phone' ? 'Sign in to your admin panel' : 'Enter verification code'}
+          Sign in to your admin panel
         </p>
       </div>
 
-      {step === 'phone' ? (
-        <form onSubmit={phoneForm.handleSubmit(handleSendOTP)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-              Phone Number
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>🇮🇳 +91</span>
-              <input
-                {...phoneForm.register('phone')}
-                className="input-field pl-16"
-                placeholder="9876543210"
-                type="tel"
-              />
-            </div>
-            {phoneForm.formState.errors.phone && (
-              <p className="text-xs text-red-500 mt-1">{phoneForm.formState.errors.phone.message}</p>
-            )}
-          </div>
-
-          {/* <div className="p-3 rounded-xl text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-            💡 <strong>Demo:</strong> Enter any phone number and use OTP <code className="font-mono bg-[var(--bg-secondary)] px-1 py-0.5 rounded">123456</code>
-          </div> */}
-
-          <button type="submit" className="btn btn-primary btn-lg w-full justify-center" disabled={isLoading}>
-            {isLoading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 22C6.48 22 2 17.52 2 12S6.48 2 12 2" />
-                </svg>
-                Sending OTP...
-              </span>
-            ) : 'Send OTP →'}
-          </button>
-        </form>
-      ) : (
-        <div className="space-y-6">
-          <div className="text-center">
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Code sent to <strong style={{ color: 'var(--text-primary)' }}>+91 {phone}</strong>
-            </p>
-          </div>
-
-          {/* OTP inputs */}
-          <div className="flex justify-center gap-2">
-            {otpDigits.map((digit, i) => (
-              <input
-                key={i}
-                id={`otp-${i}`}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleOtpChange(i, e.target.value)}
-                onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                className="w-12 h-14 text-center text-xl font-bold rounded-xl border-2 outline-none transition-all"
-                style={{
-                  background: 'var(--bg-primary)',
-                  borderColor: digit ? 'var(--accent)' : 'var(--border)',
-                  color: 'var(--text-primary)',
-                }}
-              />
-            ))}
-          </div>
-
-          <button
-            className="btn btn-primary btn-lg w-full justify-center"
-            onClick={handleVerifyOTP}
-            disabled={isLoading}
+      <form onSubmit={handleSubmit(handleLogin)} className="space-y-5">
+        {/* Email Field */}
+        <div>
+          <label
+            className="block text-sm font-medium mb-1.5"
+            style={{ color: 'var(--text-secondary)' }}
           >
-            {isLoading ? 'Verifying...' : 'Verify & Sign In →'}
-          </button>
+            Email Address
+          </label>
+          <div className="relative">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+              <svg
+                className="w-5 h-5 text-[var(--text-muted)]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206"
+                />
+              </svg>
+            </div>
+            <input
+              {...register('email')}
+              className="input-field pl-10"
+              placeholder="admin@example.com"
+              type="email"
+              autoComplete="email"
+            />
+          </div>
+          {errors.email && (
+            <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
+          )}
+        </div>
 
-          <div className="flex items-center justify-between text-sm">
+        {/* Password Field */}
+        <div>
+          <label
+            className="block text-sm font-medium mb-1.5"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            Password
+          </label>
+          <div className="relative">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+              <svg
+                className="w-5 h-5 text-[var(--text-muted)]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+            </div>
+            <input
+              {...register('password')}
+              className="input-field pl-10 pr-10"
+              placeholder="••••••••"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+            />
             <button
-              className="btn btn-ghost p-0 text-sm"
-              onClick={() => { setStep('phone'); setOtpDigits(['', '', '', '']); }}
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-[var(--text-muted)] hover:text-[var(--text-primary)] focus:outline-none"
             >
-              ← Change number
-            </button>
-            <button
-              className={`text-sm font-medium ${countdown > 0 ? 'opacity-50 cursor-not-allowed' : 'hover:underline'}`}
-              style={{ color: 'var(--accent)' }}
-              onClick={handleResendOTP}
-              disabled={countdown > 0}
-            >
-              {countdown > 0 ? `Resend in ${countdown}s` : 'Resend OTP'}
+              {showPassword ? (
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m11.122 11.122L21 21M21 12a9.953 9.953 0 01-4.004 5.828M19.78 8.162A10.061 10.061 0 0012 5c-1.28 0-2.502.24-3.626.68"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
+                </svg>
+              )}
             </button>
           </div>
+          {errors.password && (
+            <p className="text-xs text-red-500 mt-1">{errors.password.message}</p>
+          )}
         </div>
-      )}
+
+        <button
+          type="submit"
+          className="btn btn-primary btn-lg w-full justify-center mt-2"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <svg
+                className="animate-spin w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M12 22C6.48 22 2 17.52 2 12S6.48 2 12 2" />
+              </svg>
+              Signing In...
+            </span>
+          ) : (
+            'Sign In →'
+          )}
+        </button>
+      </form>
     </div>
   );
 }

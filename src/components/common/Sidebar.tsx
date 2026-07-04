@@ -12,6 +12,7 @@ const navItems = [
   { to: '/users', icon: '👥', label: 'Users' },
   { to: '/orders', icon: '📦', label: 'Orders' },
   { to: '/categories', icon: '🏷️', label: 'Categories' },
+  { to: '/coupons', icon: '🎟️', label: 'Coupons' },
   { to: '/settings', icon: '⚙️', label: 'Settings' },
 ];
 

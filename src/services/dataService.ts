@@ -16,35 +16,45 @@ import {
   Order,
   Category,
   Product,
+  Coupon,
   TableFilters,
   PaginatedResponse,
 } from '@/types';
 
 const delay = (ms = 600) => new Promise((r) => setTimeout(r, ms));
 
-const statusMapFrontendToBackend: Record<string, string> = {
-  'Requested': 'pending',
-  'Confirmed': 'confirmed',
-  'In Progress': 'shipped',
-  'Packed Up': 'delivered',
-  'Delivered': 'delivered',
-  'Cancelled': 'cancelled',
+import { OrderStatus } from '../types';
+
+const statusMapBackendToFrontend: Record<string, OrderStatus> = {
+  'pending': 'PENDING_APPROVAL',
+  'confirmed': 'APPROVED',
+  'processing': 'PROCESSING',
+  'shipped': 'SHIPPED',
+  'delivered': 'DELIVERED',
+  'cancelled': 'CANCELLED',
 };
 
-const statusMapBackendToFrontend: Record<string, string> = {
-  'pending': 'Requested',
-  'confirmed': 'Confirmed',
-  'shipped': 'In Progress',
-  'delivered': 'Delivered',
-  'cancelled': 'Cancelled',
+const mapBackendStatusToFrontend = (status: string): OrderStatus => {
+  const norm = status?.toLowerCase() || '';
+  if (statusMapBackendToFrontend[norm]) return statusMapBackendToFrontend[norm];
+  
+  const upper = status?.toUpperCase() as OrderStatus;
+  if ([
+    'PENDING_APPROVAL',
+    'APPROVED',
+    'REJECTED',
+    'PROCESSING',
+    'SHIPPED',
+    'DELIVERED',
+    'CANCELLED'
+  ].includes(upper)) {
+    return upper;
+  }
+  return 'PENDING_APPROVAL';
 };
 
 const mapFrontendStatusToBackend = (status: string): string => {
-  return statusMapFrontendToBackend[status] || 'pending';
-};
-
-const mapBackendStatusToFrontend = (status: string): any => {
-  return statusMapBackendToFrontend[status] || 'Requested';
+  return status;
 };
 
 async function getProductLookupMap(): Promise<Record<string, { name: string; image?: string }>> {
@@ -75,6 +85,7 @@ const mapBackendOrderToFrontend = (backendOrder: any, productLookup: Record<stri
     amount: backendOrder.totalAmount || 0,
     paymentStatus: 'paid',
     orderStatus: mapBackendStatusToFrontend(backendOrder.status),
+    rejectionReason: backendOrder.rejectionReason || undefined,
     items: (backendOrder.items || []).map((item: any) => {
       const prodId = item.productId?._id || item.productId || '';
       const resolved = productLookup[prodId] || { name: `Product (${prodId.slice(-4)})` };
@@ -207,9 +218,11 @@ export const ordersService = {
     return mapBackendOrderToFrontend(data, productLookup);
   },
 
-  updateStatus: async (id: string, status: string): Promise<Order> => {
-    const backendStatus = mapFrontendStatusToBackend(status);
-    const { data } = await AxiosBase.patch<any>(`/orders/${id}/status`, { status: backendStatus });
+  updateStatus: async (id: string, status: string, rejectionReason?: string): Promise<Order> => {
+    const { data } = await AxiosBase.patch<any>(`/orders/${id}/status`, { 
+      status, 
+      rejectionReason 
+    });
     const productLookup = await getProductLookupMap();
     return mapBackendOrderToFrontend(data, productLookup);
   },
@@ -232,7 +245,6 @@ const mapBackendCategoryToFrontend = (backendCat: any): Category => {
     productCount: backendCat.productCount || 0,
     createdAt: backendCat.createdAt || new Date().toISOString(),
     urlKey: backendCat.urlKey || '',
-    banner: backendCat.banner || '',
     parentId: backendCat.parentId || null,
     level: backendCat.level || 0,
     order: backendCat.order || 0,
@@ -245,6 +257,7 @@ const mapBackendProductToFrontend = (backendProd: any): Product => {
     categoryId: typeof backendProd.categoryId === 'object' && backendProd.categoryId ? backendProd.categoryId._id || backendProd.categoryId.id || '' : backendProd.categoryId || '',
     name: backendProd.name || '',
     description: backendProd.description || '',
+    about: backendProd.about || '',
     price: backendProd.mrp || backendProd.price || 0,
     discountPrice: backendProd.mrp && backendProd.price < backendProd.mrp ? backendProd.price : undefined,
     stock: backendProd.quantity || 0,
@@ -252,14 +265,15 @@ const mapBackendProductToFrontend = (backendProd: any): Product => {
     status: backendProd.isActive ? 'active' : 'inactive',
     createdAt: backendProd.createdAt || new Date().toISOString(),
     brand: backendProd.brand || '',
-    banner: backendProd.banner || '',
     order: backendProd.order || 0,
   };
 };
 
 export const categoriesService = {
-  getAll: async (): Promise<Category[]> => {
-    const { data } = await AxiosBase.get<any[]>('/categories');
+  getAll: async (name?: string): Promise<Category[]> => {
+    const { data } = await AxiosBase.get<any[]>('/categories', {
+      params: name ? { name } : {},
+    });
     return data.map(mapBackendCategoryToFrontend);
   },
 
@@ -276,7 +290,6 @@ export const categoriesService = {
       name: payload.name,
       description: payload.description,
       urlKey: payload.urlKey || payload.name?.toLowerCase().replace(/\s+/g, '-'),
-      banner: payload.banner || '',
       image: payload.image,
       parentId: payload.parentId || null,
       level: payload.level || 0,
@@ -295,7 +308,6 @@ export const categoriesService = {
     }
     if (payload.description !== undefined) backendPayload.description = payload.description;
     if (payload.urlKey !== undefined) backendPayload.urlKey = payload.urlKey;
-    if (payload.banner !== undefined) backendPayload.banner = payload.banner;
     if (payload.image !== undefined) backendPayload.image = payload.image;
     if (payload.parentId !== undefined) backendPayload.parentId = payload.parentId || null;
     if (payload.level !== undefined) backendPayload.level = payload.level;
@@ -315,10 +327,10 @@ export const categoriesService = {
 //  PRODUCTS
 // ═══════════════════════════════════════════════════════════════
 export const productsService = {
-  getByCategoryId: async (categoryId: string): Promise<Product[]> => {
-    const { data } = await AxiosBase.get<any>('/products', {
-      params: { categoryId, limit: 250 }
-    });
+  getByCategoryId: async (categoryId: string, name?: string): Promise<Product[]> => {
+    const params: any = { categoryId, limit: 250 };
+    if (name) params.name = name;
+    const { data } = await AxiosBase.get<any>('/products', { params });
     const list = data.data || [];
     return list.map(mapBackendProductToFrontend);
   },
@@ -333,8 +345,8 @@ export const productsService = {
     const backendPayload = {
       name: payload.name,
       description: payload.description,
+      about: payload.about || '',
       brand: payload.brand || 'Generic',
-      banner: payload.banner || '',
       mrp: payload.price || 0,
       price: payload.discountPrice || payload.price || 0,
       quantity: payload.stock || 0,
@@ -351,8 +363,8 @@ export const productsService = {
     const backendPayload: any = {};
     if (payload.name !== undefined) backendPayload.name = payload.name;
     if (payload.description !== undefined) backendPayload.description = payload.description;
+    if (payload.about !== undefined) backendPayload.about = payload.about;
     if (payload.brand !== undefined) backendPayload.brand = payload.brand;
-    if (payload.banner !== undefined) backendPayload.banner = payload.banner;
     if (payload.price !== undefined) backendPayload.mrp = payload.price;
     if (payload.discountPrice !== undefined) {
       backendPayload.price = payload.discountPrice;
@@ -378,5 +390,50 @@ export const productsService = {
     status: 'active' | 'inactive',
   ): Promise<Product> => {
     return productsService.update(id, { status });
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  COUPONS
+// ═══════════════════════════════════════════════════════════════
+const mapBackendCouponToFrontend = (backendCoupon: any): Coupon => {
+  return {
+    id: backendCoupon._id || backendCoupon.id || '',
+    code: backendCoupon.code || '',
+    type: backendCoupon.type || 'flat',
+    value: backendCoupon.value || 0,
+    minOrderAmount: backendCoupon.minOrderAmount || 0,
+    maxDiscount: backendCoupon.maxDiscount || 0,
+    expiryDate: backendCoupon.expiryDate || '',
+    isActive: backendCoupon.isActive !== undefined ? backendCoupon.isActive : true,
+  };
+};
+
+export const couponsService = {
+  getAll: async (): Promise<Coupon[]> => {
+    const { data } = await AxiosBase.get<any[]>('/coupons');
+    return data.map(mapBackendCouponToFrontend);
+  },
+
+  getById: async (id: string): Promise<Coupon> => {
+    const { data } = await AxiosBase.get<any[]>('/coupons', {
+      params: { id },
+    });
+    if (!data || data.length === 0) throw new Error('Coupon not found');
+    return mapBackendCouponToFrontend(data[0]);
+  },
+
+  create: async (payload: Partial<Coupon>): Promise<Coupon> => {
+    const { data } = await AxiosBase.post<any>('/coupons', payload);
+    return mapBackendCouponToFrontend(data);
+  },
+
+  update: async (id: string, payload: Partial<Coupon>): Promise<Coupon> => {
+    const { data } = await AxiosBase.patch<any>(`/coupons/${id}`, payload);
+    return mapBackendCouponToFrontend(data);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await AxiosBase.delete(`/coupons/${id}`);
   },
 };

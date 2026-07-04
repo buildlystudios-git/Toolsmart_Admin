@@ -10,6 +10,7 @@ import OrdersPage from './pages/orders/OrdersPage';
 import OrderDetailPage from './pages/orders/OrderDetailPage';
 import CategoriesPage from './pages/categories/CategoriesPage';
 import CategoryDetailPage from './pages/categories/CategoryDetailPage';
+import CouponsPage from './pages/coupons/CouponsPage';
 import SettingsPage from './pages/settings/SettingsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/orders/:id" element={<OrderDetailPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/categories/:id" element={<CategoryDetailPage />} />
+          <Route path="/coupons" element={<CouponsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

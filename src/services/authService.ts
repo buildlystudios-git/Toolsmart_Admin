@@ -22,32 +22,16 @@ const MOCK_ADMIN: User = {
 
 export const authService = {
   /**
-   * Step 1 — request OTP
-   * Real: POST /auth/send-otp  { phone }
+   * Admin Login using Email and Password
+   * POST /auth/admilogin
    */
-  // src/services/authService.ts
-
-  sendOTP: async (phone: string): Promise<{ success: boolean; message: string }> => {
-    const { data } = await AxiosBase.post('/auth/login', {
-      phoneNumber: phone,
-      role: 'admin',
-    });
-    // data = { message: "OTP sent successfully", attempts: 1 }
-    return { success: true, message: data.message };
-  },
-
-  /**
-   * Step 2 — verify OTP → get tokens
-   * Real: POST /auth/verify-otp  { phone, otp }
-   * Server returns: { accessToken, refreshToken, user }
-   */
-  verifyOTP: async (
-    phone: string,
-    otp: string,
+  login: async (
+    email: string,
+    password: string,
   ): Promise<{ user: User; token: string; refreshToken: string }> => {
     const { data } = await AxiosBase.post<{ accessToken: string; refreshToken: string }>(
-      '/auth/otp/verify',
-      { phoneNumber: phone, otp }
+      '/auth/admilogin',
+      { email, password }
     );
 
     const { data: userData } = await AxiosBase.get<any>('/users/me', {

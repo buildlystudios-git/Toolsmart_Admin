@@ -33,3 +33,4 @@ vite.svg
 
 # TypeScript
 *.tsbuildinfo
+.md

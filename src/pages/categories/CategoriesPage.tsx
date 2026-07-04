@@ -10,16 +10,12 @@ import { Category } from '../../types';
 import { StatusBadge, CardSkeleton, EmptyState } from '../../components/ui';
 import ConfirmModal from '../../components/modals/ConfirmModal';
 import Drawer from '../../components/modals/Drawer';
-import { format } from 'date-fns';
 
 const categorySchema = z.object({
   name: z.string().min(2, 'Name required'),
   description: z.string().min(5, 'Description required'),
   image: z.string().optional(),
   urlKey: z.string().optional(),
-  banner: z.string().optional(),
-  parentId: z.string().nullable().optional(),
-  level: z.preprocess((val) => (val === '' || val === undefined ? 0 : Number(val)), z.number().int().nonnegative().default(0)),
   order: z.preprocess((val) => (val === '' || val === undefined ? 0 : Number(val)), z.number().int().nonnegative().default(0)),
   status: z.enum(['active', 'inactive']).default('active'),
 });
@@ -40,8 +36,17 @@ export default function CategoriesPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editCat, setEditCat] = useState<Category | null>(null);
   const [deleteCat, setDeleteCat] = useState<Category | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: categories, isLoading } = useQuery({ queryKey: ['categories'], queryFn: categoriesService.getAll });
+  const { data: categories, isLoading } = useQuery({
+    queryKey: ['categories', searchQuery],
+    queryFn: () => categoriesService.getAll(searchQuery),
+  });
+
+  // Filter for Level 1 categories
+  const level1Categories = (categories ?? []).filter(
+    (c) => c.level === 1 || !c.parentId
+  );
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<CategoryForm>({ resolver: zodResolver(categorySchema) });
 
@@ -72,9 +77,6 @@ export default function CategoriesPage() {
       description: cat.description,
       image: cat.image || '',
       urlKey: cat.urlKey || '',
-      banner: cat.banner || '',
-      parentId: cat.parentId || '',
-      level: cat.level ?? 0,
       order: cat.order ?? 0,
       status: cat.status || 'active',
     });
@@ -88,9 +90,6 @@ export default function CategoriesPage() {
       description: '',
       image: '',
       urlKey: '',
-      banner: '',
-      parentId: '',
-      level: 0,
       order: 0,
       status: 'active',
     });
@@ -100,7 +99,8 @@ export default function CategoriesPage() {
   const onSubmit = (data: CategoryForm) => {
     const payload = {
       ...data,
-      parentId: data.parentId === '' ? null : data.parentId,
+      parentId: null,
+      level: 1,
     };
     if (editCat) updateMutation.mutate({ id: editCat.id, data: payload });
     else createMutation.mutate(payload);
@@ -111,20 +111,34 @@ export default function CategoriesPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Categories</h1>
-          <p className="page-subtitle">{categories?.length ?? 0} categories</p>
+          <p className="page-subtitle">{level1Categories.length} root categories</p>
         </div>
         <button className="btn btn-primary" onClick={openCreate}>+ Add Category</button>
       </div>
 
+      {/* Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border)]">
+        <div className="relative w-full sm:max-w-md">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>🔍</span>
+          <input
+            type="text"
+            placeholder="Search categories by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input-field pl-10"
+          />
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[...Array(4)].map((_, i) => <CardSkeleton key={i} />)}
+          {[...Array(3)].map((_, i) => <CardSkeleton key={i} />)}
         </div>
-      ) : !categories?.length ? (
-        <EmptyState icon="🏷️" title="No categories yet" subtitle="Create your first category" />
+      ) : !level1Categories.length ? (
+        <EmptyState icon="🏷️" title="No categories found" subtitle={searchQuery ? "Try a different search query" : "Create your first category"} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {categories.map((cat) => (
+          {level1Categories.map((cat) => (
             <div key={cat.id} className="card hover:shadow-md cursor-pointer group overflow-hidden p-0" onClick={() => navigate(`/categories/${cat.id}`)}>
               {cat.image && (
                 <div className="h-40 overflow-hidden">
@@ -139,7 +153,7 @@ export default function CategoriesPage() {
                 <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{cat.description}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                    {cat.productCount} products
+                    {cat.productCount} subcategories/products
                   </span>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={() => openEdit(cat)}>✏️</button>
@@ -164,7 +178,7 @@ export default function CategoriesPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Category Name *</label>
-            <input {...register('name')} className="input-field" placeholder="e.g. Electronics" />
+            <input {...register('name')} className="input-field" placeholder="e.g. Power Tools" />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
           </div>
           <div>
@@ -176,11 +190,6 @@ export default function CategoriesPage() {
             <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>URL Key</label>
             <input {...register('urlKey')} className="input-field" placeholder="e.g. power-tools" />
             {errors.urlKey && <p className="text-xs text-red-500 mt-1">{errors.urlKey.message}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Banner HTML/Text</label>
-            <textarea {...register('banner')} rows={2} className="input-field resize-none" placeholder="Banner text or HTML..." />
-            {errors.banner && <p className="text-xs text-red-500 mt-1">{errors.banner.message}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Category Image</label>
@@ -230,26 +239,9 @@ export default function CategoriesPage() {
             {errors.image && <p className="text-xs text-red-500 mt-1">{errors.image.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Parent Category</label>
-            <select {...register('parentId')} className="input-field">
-              <option value="">None (Root Category)</option>
-              {(categories?.filter(c => c.id !== editCat?.id) ?? []).map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-            {errors.parentId && <p className="text-xs text-red-500 mt-1">{errors.parentId.message}</p>}
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Level</label>
-              <input {...register('level')} type="number" className="input-field" placeholder="0" />
-              {errors.level && <p className="text-xs text-red-500 mt-1">{errors.level.message}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Display Order</label>
-              <input {...register('order')} type="number" className="input-field" placeholder="0" />
-              {errors.order && <p className="text-xs text-red-500 mt-1">{errors.order.message}</p>}
-            </div>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Display Order</label>
+            <input {...register('order')} type="number" className="input-field" placeholder="0" />
+            {errors.order && <p className="text-xs text-red-500 mt-1">{errors.order.message}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Status</label>
@@ -261,8 +253,15 @@ export default function CategoriesPage() {
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" className="btn btn-secondary flex-1" onClick={() => setDrawerOpen(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
-              {editCat ? 'Update Category' : 'Create Category'}
+            <button type="submit" className="btn btn-primary flex-1 justify-center" disabled={createMutation.isPending || updateMutation.isPending}>
+              {createMutation.isPending || updateMutation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22C6.48 22 2 17.52 2 12S6.48 2 12 2" />
+                  </svg>
+                  Saving...
+                </span>
+              ) : editCat ? 'Update Category' : 'Create Category'}
             </button>
           </div>
         </form>
@@ -271,7 +270,7 @@ export default function CategoriesPage() {
       <ConfirmModal
         open={!!deleteCat}
         title="Delete Category"
-        message={`Delete "${deleteCat?.name}"? All products will be unlinked.`}
+        message={`Delete "${deleteCat?.name}"? All subcategories and products will be unlinked.`}
         confirmLabel="Delete"
         onConfirm={() => deleteCat && deleteMutation.mutate(deleteCat.id)}
         onCancel={() => setDeleteCat(null)}

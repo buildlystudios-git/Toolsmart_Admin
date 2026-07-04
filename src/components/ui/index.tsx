@@ -27,7 +27,6 @@ export function TableSkeleton({ rows = 5, cols = 5 }: { rows?: number; cols?: nu
   );
 }
 
-// Status Badge
 export type StatusType =
   | 'active'
   | 'inactive'
@@ -45,7 +44,14 @@ export type StatusType =
   | 'In Progress'
   | 'Packed Up'
   | 'Delivered'
-  | 'Cancelled';
+  | 'Cancelled'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED';
 
 const statusConfig: Record<StatusType, { label: string; className: string }> = {
   active: { label: 'Active', className: 'badge-success' },
@@ -65,6 +71,13 @@ const statusConfig: Record<StatusType, { label: string; className: string }> = {
   'Packed Up': { label: 'Packed Up', className: 'badge-purple' },
   Delivered: { label: 'Delivered', className: 'badge-success' },
   Cancelled: { label: 'Cancelled', className: 'badge-danger' },
+  PENDING_APPROVAL: { label: 'Pending Approval', className: 'badge-warning' },
+  APPROVED: { label: 'Approved', className: 'badge-info' },
+  REJECTED: { label: 'Rejected', className: 'badge-danger' },
+  PROCESSING: { label: 'Processing', className: 'badge-purple' },
+  SHIPPED: { label: 'Shipped', className: 'badge-purple' },
+  DELIVERED: { label: 'Delivered', className: 'badge-success' },
+  CANCELLED: { label: 'Cancelled', className: 'badge-danger' },
 };
 
 export function StatusBadge({ status }: { status: StatusType }) {

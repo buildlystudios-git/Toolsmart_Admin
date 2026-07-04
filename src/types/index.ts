@@ -19,7 +19,7 @@ export interface AuthState {
 }
 
 // Order Types
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 export type PaymentStatus = 'paid' | 'unpaid' | 'refunded';
 
 export interface Order {
@@ -30,6 +30,7 @@ export interface Order {
   amount: number;
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
+  rejectionReason?: string;
   items: OrderItem[];
   date: string;
   address?: string;
@@ -53,7 +54,6 @@ export interface Category {
   productCount: number;
   createdAt: string;
   urlKey?: string;
-  banner?: string;
   parentId?: string | null;
   level?: number;
   order?: number;
@@ -65,6 +65,7 @@ export interface Product {
   categoryId: string;
   name: string;
   description: string;
+  about?: string;
   price: number;
   discountPrice?: number;
   stock: number;
@@ -72,8 +73,19 @@ export interface Product {
   status: 'active' | 'inactive';
   createdAt: string;
   brand?: string;
-  banner?: string;
   order?: number;
+}
+
+// Coupon Types
+export interface Coupon {
+  id: string;
+  code: string;
+  type: 'flat' | 'percentage';
+  value: number;
+  minOrderAmount: number;
+  maxDiscount: number;
+  expiryDate: string;
+  isActive?: boolean;
 }
 
 // Dashboard Types
