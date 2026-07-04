@@ -1,6 +1,8 @@
 import { mockDashboardStats, salesData, userGrowthData, mockActivities } from '../../utils/mockData';
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAppSelector } from '../../redux/hooks';
+import { useQuery } from '@tanstack/react-query';
+import { usersService } from '../../services/dataService';
 
 const statCards = [
   { label: 'Total Users', value: (s: typeof mockDashboardStats) => s.totalUsers.toLocaleString(), icon: '👥', color: '#6366f1', bg: 'bg-violet-500' },
@@ -25,7 +27,15 @@ function useChartColors() {
 }
 
 export default function DashboardPage() {
-  const stats = mockDashboardStats;
+  const { data: usersData } = useQuery({
+    queryKey: ['users', 'count'],
+    queryFn: () => usersService.getAll({ page: 1, limit: 1 }),
+  });
+
+  const stats = {
+    ...mockDashboardStats,
+    totalUsers: usersData?.total ?? mockDashboardStats.totalUsers,
+  };
   const colors = useChartColors();
 
   const CustomTooltip = ({ active, payload, label }: any) => {

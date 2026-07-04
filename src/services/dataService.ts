@@ -104,78 +104,63 @@ const mapBackendOrderToFrontend = (backendOrder: any, productLookup: Record<stri
 // ═══════════════════════════════════════════════════════════════
 //  USERS
 // ═══════════════════════════════════════════════════════════════
+const mapBackendUserToFrontend = (backendUser: any): User => {
+  return {
+    id: backendUser._id || backendUser.id || '',
+    name: backendUser.fullName || backendUser.name || 'User',
+    email: backendUser.email || '',
+    phone: backendUser.phoneNumber || backendUser.phone || '',
+    avatar: backendUser.profileImage || backendUser.avatar || undefined,
+    role: backendUser.role === 'admin' ? 'admin' : 'user',
+    status: backendUser.isDeleted ? 'suspended' : 'active',
+    registrationDate: backendUser.createdAt || new Date().toISOString(),
+  };
+};
+
 export const usersService = {
   getAll: async (filters: TableFilters): Promise<PaginatedResponse<User>> => {
-    // ── REAL ──────────────────────────────────────────────────
-    // const { data } = await AxiosBase.get('/admin/users', { params: filters });
-    // return data; // { data[], total, page, limit, totalPages }
-
-    // ── MOCK ──────────────────────────────────────────────────
-    await delay();
-    let data = [...mockUsers];
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
-      data = data.filter(
-        (u) =>
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          u.phone.includes(q),
-      );
-    }
-    if (filters.status) data = data.filter((u) => u.status === filters.status);
-    if (filters.sortBy) {
-      data.sort((a, b) => {
-        const va = String(a[filters.sortBy as keyof User] ?? '');
-        const vb = String(b[filters.sortBy as keyof User] ?? '');
-        return filters.sortOrder === 'desc'
-          ? vb.localeCompare(va)
-          : va.localeCompare(vb);
-      });
-    }
-    const total = data.length;
-    const start = (filters.page - 1) * filters.limit;
-    return {
-      data: data.slice(start, start + filters.limit),
-      total,
+    const params: any = {
       page: filters.page,
       limit: filters.limit,
-      totalPages: Math.ceil(total / filters.limit),
+      isDeleted: false,
+    };
+    if (filters.search) {
+      params.search = filters.search;
+    }
+    if (filters.sortBy) {
+      const orderVal = filters.sortOrder === 'desc' ? -1 : 1;
+      params.sortBy = JSON.stringify({ [filters.sortBy]: orderVal });
+    }
+    const { data } = await AxiosBase.get<any>('/users', { params });
+    const rawList = data?.data || data?.users || (Array.isArray(data) ? data : []);
+    const total = data?.total || rawList.length;
+    const page = data?.page || filters.page;
+    const limit = data?.limit || filters.limit;
+    return {
+      data: rawList.map(mapBackendUserToFrontend),
+      total,
+      page,
+      limit,
+      totalPages: data?.totalPages || Math.ceil(total / limit),
     };
   },
 
   getById: async (id: string): Promise<User> => {
-    // ── REAL ──────────────────────────────────────────────────
-    // const { data } = await AxiosBase.get(`/admin/users/${id}`);
-    // return data.user;
-
-    await delay();
-    const user = mockUsers.find((u) => u.id === id);
-    if (!user) throw new Error('User not found');
-    return user;
+    const { data } = await AxiosBase.get<any>(`/users/${id}`);
+    return mapBackendUserToFrontend(data);
   },
 
   updateStatus: async (
     id: string,
     status: 'active' | 'suspended',
   ): Promise<User> => {
-    // ── REAL ──────────────────────────────────────────────────
-    // const { data } = await AxiosBase.patch(`/admin/users/${id}/status`, { status });
-    // return data.user;
-
-    await delay();
-    const user = mockUsers.find((u) => u.id === id);
-    if (!user) throw new Error('User not found');
-    user.status = status;
-    return { ...user };
+    const isDeleted = status === 'suspended';
+    const { data } = await AxiosBase.patch<any>(`/users/${id}`, { isDeleted });
+    return mapBackendUserToFrontend(data);
   },
 
   delete: async (id: string): Promise<void> => {
-    // ── REAL ──────────────────────────────────────────────────
-    // await AxiosBase.delete(`/admin/users/${id}`);
-
-    await delay();
-    const idx = mockUsers.findIndex((u) => u.id === id);
-    if (idx > -1) mockUsers.splice(idx, 1);
+    await AxiosBase.delete(`/users/${id}`);
   },
 };
 
@@ -270,9 +255,15 @@ const mapBackendProductToFrontend = (backendProd: any): Product => {
 };
 
 export const categoriesService = {
-  getAll: async (name?: string): Promise<Category[]> => {
+  getAll: async (paramsOrName?: string | { name?: string; level?: number; parentId?: string }): Promise<Category[]> => {
+    let params: any = {};
+    if (typeof paramsOrName === 'string') {
+      params = { name: paramsOrName };
+    } else if (paramsOrName) {
+      params = paramsOrName;
+    }
     const { data } = await AxiosBase.get<any[]>('/categories', {
-      params: name ? { name } : {},
+      params,
     });
     return data.map(mapBackendCategoryToFrontend);
   },

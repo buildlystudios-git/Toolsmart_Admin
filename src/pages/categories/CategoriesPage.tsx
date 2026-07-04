@@ -39,8 +39,8 @@ export default function CategoriesPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: categories, isLoading } = useQuery({
-    queryKey: ['categories', searchQuery],
-    queryFn: () => categoriesService.getAll(searchQuery),
+    queryKey: ['categories', 'list', searchQuery],
+    queryFn: () => categoriesService.getAll({ name: searchQuery, level: 1 }),
   });
 
   // Filter for Level 1 categories

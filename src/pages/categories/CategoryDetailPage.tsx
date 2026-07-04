@@ -82,8 +82,8 @@ export default function CategoryDetailPage() {
 
   // Query: All categories for subcategory filtering
   const { data: allCategories, isLoading: catsLoading } = useQuery({
-    queryKey: ['categories', subcatSearchQuery],
-    queryFn: () => categoriesService.getAll(subcatSearchQuery),
+    queryKey: ['categories', 'subcategories', id, subcatSearchQuery],
+    queryFn: () => categoriesService.getAll({ name: subcatSearchQuery, level: 2, parentId: id }),
   });
 
   // Filter Subcategories (Level 2 categories belonging to this Level 1 category)
