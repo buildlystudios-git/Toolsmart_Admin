@@ -101,7 +101,7 @@ export default function OrdersPage() {
                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{order.phoneNumber || 'N/A'}</p>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>₹{order.amount.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>₹{(order.grandTotal || order.amount || 0).toLocaleString()}</td>
                     <td className="px-4 py-3">
                       <span className={`badge ${order.deliveryType === 'SELF_PICKUP' ? 'badge-info' : 'badge-purple'}`}>
                         {order.deliveryType === 'SELF_PICKUP' ? 'Self Pickup' : 'Delivery'}

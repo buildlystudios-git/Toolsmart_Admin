@@ -119,7 +119,7 @@ const mapBackendOrderToFrontend = (backendOrder: any, productLookup: Record<stri
     deliveryType: backendOrder.deliveryType || 'DELIVERY',
     couponCode: backendOrder.couponCode || null,
     discountAmount: backendOrder.discountAmount || 0,
-    grandTotal: backendOrder.grandTotal !== undefined ? backendOrder.grandTotal : backendOrder.totalAmount,
+    grandTotal: backendOrder.grandTotal || backendOrder.totalAmount || 0,
   };
 };
 

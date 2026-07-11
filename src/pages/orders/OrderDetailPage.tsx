@@ -161,7 +161,7 @@ export default function OrderDetailPage() {
                   <div className="flex justify-between items-center pt-2 border-t border-dashed border-[var(--border)]">
                     <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Grand Total</span>
                     <span className="text-lg font-bold" style={{ color: 'var(--accent)' }}>
-                      ₹{(order.grandTotal ?? order.amount).toLocaleString()}
+                      ₹{(order.grandTotal || order.amount || 0).toLocaleString()}
                     </span>
                   </div>
                 </>
