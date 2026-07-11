@@ -79,7 +79,7 @@ export default function OrdersPage() {
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-tertiary)' }}>
-                {['Order ID', 'Customer', 'Amount', 'Payment', 'Order Status', 'Date', 'Actions'].map((h) => (
+                {['Order ID', 'Customer', 'Amount', 'Delivery Type', 'Order Status', 'Date', 'Actions'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
                     {h}
                   </th>
@@ -98,11 +98,15 @@ export default function OrdersPage() {
                     <td className="px-4 py-3">
                       <div>
                         <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{order.customerName}</p>
-                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{order.customerEmail}</p>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{order.phoneNumber || 'N/A'}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>₹{order.amount.toLocaleString()}</td>
-                    <td className="px-4 py-3"><StatusBadge status={order.paymentStatus} /></td>
+                    <td className="px-4 py-3">
+                      <span className={`badge ${order.deliveryType === 'SELF_PICKUP' ? 'badge-info' : 'badge-purple'}`}>
+                        {order.deliveryType === 'SELF_PICKUP' ? 'Self Pickup' : 'Delivery'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3"><StatusBadge status={order.orderStatus} /></td>
                     <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
                       {format(new Date(order.date), 'MMM d, yyyy')}

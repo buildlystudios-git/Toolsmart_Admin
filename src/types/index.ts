@@ -34,6 +34,11 @@ export interface Order {
   items: OrderItem[];
   date: string;
   address?: string;
+  phoneNumber?: string;
+  deliveryType?: string;
+  couponCode?: string | null;
+  discountAmount?: number;
+  grandTotal?: number;
 }
 
 export interface OrderItem {

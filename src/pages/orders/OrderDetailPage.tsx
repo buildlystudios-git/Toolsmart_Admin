@@ -22,13 +22,17 @@ export default function OrderDetailPage() {
     enabled: !!id,
   });
 
-  // Automatically sync statusSelect with the current order status if it's post-approval
+  // Automatically sync statusSelect with the next logical status (or default)
   useEffect(() => {
     if (order) {
-      if (['PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(order.orderStatus)) {
-        setStatusSelect(order.orderStatus);
-      } else if (order.orderStatus === 'APPROVED') {
+      if (order.orderStatus === 'APPROVED') {
         setStatusSelect('PROCESSING');
+      } else if (order.orderStatus === 'PROCESSING') {
+        setStatusSelect('SHIPPED');
+      } else if (order.orderStatus === 'SHIPPED') {
+        setStatusSelect('DELIVERED');
+      } else {
+        setStatusSelect(order.orderStatus);
       }
     }
   }, [order]);
@@ -105,7 +109,9 @@ export default function OrderDetailPage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <StatusBadge status={order.paymentStatus} />
+                <span className={`badge ${order.deliveryType === 'SELF_PICKUP' ? 'badge-info' : 'badge-purple'}`}>
+                  {order.deliveryType === 'SELF_PICKUP' ? 'Self Pickup' : 'Delivery'}
+                </span>
                 <StatusBadge status={order.orderStatus} />
               </div>
             </div>
@@ -141,9 +147,30 @@ export default function OrderDetailPage() {
               ))}
             </div>
 
-            <div className="flex justify-between items-center border-t border-[var(--border)] mt-5 pt-4">
-              <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Total Amount</span>
-              <span className="text-lg font-bold" style={{ color: 'var(--accent)' }}>₹{order.amount.toLocaleString()}</span>
+            <div className="border-t border-[var(--border)] mt-5 pt-4 space-y-2">
+              {order.couponCode && (order.discountAmount ?? 0) > 0 ? (
+                <>
+                  <div className="flex justify-between items-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    <span>Subtotal</span>
+                    <span>₹{order.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                    <span>🏷️ Coupon Applied ({order.couponCode})</span>
+                    <span>- ₹{(order.discountAmount ?? 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-dashed border-[var(--border)]">
+                    <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Grand Total</span>
+                    <span className="text-lg font-bold" style={{ color: 'var(--accent)' }}>
+                      ₹{(order.grandTotal ?? order.amount).toLocaleString()}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Total Amount</span>
+                  <span className="text-lg font-bold" style={{ color: 'var(--accent)' }}>₹{order.amount.toLocaleString()}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -223,9 +250,15 @@ export default function OrderDetailPage() {
                     onChange={(e) => setStatusSelect(e.target.value)}
                     className="input-field py-2"
                   >
-                    <option value="PROCESSING">Processing</option>
-                    <option value="SHIPPED">Shipped</option>
-                    <option value="DELIVERED">Delivered</option>
+                    {order.orderStatus === 'APPROVED' && (
+                      <option value="PROCESSING">Processing</option>
+                    )}
+                    {(order.orderStatus === 'APPROVED' || order.orderStatus === 'PROCESSING') && (
+                      <option value="SHIPPED">Shipped</option>
+                    )}
+                    {(order.orderStatus === 'APPROVED' || order.orderStatus === 'PROCESSING' || order.orderStatus === 'SHIPPED') && (
+                      <option value="DELIVERED">Delivered</option>
+                    )}
                     <option value="CANCELLED">Cancelled</option>
                   </select>
                   <button
@@ -266,10 +299,10 @@ export default function OrderDetailPage() {
               <p className="text-sm font-semibold mt-0.5" style={{ color: 'var(--text-primary)' }}>{order.customerName}</p>
             </div>
             <div>
-              <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Email</p>
-              <p className="text-sm font-semibold mt-0.5 break-all" style={{ color: 'var(--text-primary)' }}>{order.customerEmail}</p>
+              <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Phone Number</p>
+              <p className="text-sm font-semibold mt-0.5" style={{ color: 'var(--text-primary)' }}>{order.phoneNumber || 'N/A'}</p>
             </div>
-            {order.address && (
+            {order.address && order.deliveryType !== 'SELF_PICKUP' && (
               <div>
                 <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Delivery Address</p>
                 <p className="text-sm font-medium mt-0.5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{order.address}</p>

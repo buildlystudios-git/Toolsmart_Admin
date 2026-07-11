@@ -77,6 +77,22 @@ async function getProductLookupMap(): Promise<Record<string, { name: string; ima
 }
 
 const mapBackendOrderToFrontend = (backendOrder: any, productLookup: Record<string, { name: string; image?: string }>): Order => {
+  let formattedAddress = '';
+  if (backendOrder.address) {
+    if (typeof backendOrder.address === 'string') {
+      formattedAddress = backendOrder.address;
+    } else if (typeof backendOrder.address === 'object') {
+      const parts = [
+        backendOrder.address.addressLine,
+        backendOrder.address.landmark,
+        backendOrder.address.city,
+        backendOrder.address.state,
+        backendOrder.address.pincode
+      ].filter(Boolean);
+      formattedAddress = parts.join(', ');
+    }
+  }
+
   return {
     id: backendOrder._id || backendOrder.id || '',
     customerId: backendOrder.userId || '',
@@ -98,6 +114,12 @@ const mapBackendOrderToFrontend = (backendOrder: any, productLookup: Record<stri
       };
     }),
     date: backendOrder.createdAt || new Date().toISOString(),
+    address: formattedAddress || undefined,
+    phoneNumber: backendOrder.phoneNumber || backendOrder.phone || undefined,
+    deliveryType: backendOrder.deliveryType || 'DELIVERY',
+    couponCode: backendOrder.couponCode || null,
+    discountAmount: backendOrder.discountAmount || 0,
+    grandTotal: backendOrder.grandTotal !== undefined ? backendOrder.grandTotal : backendOrder.totalAmount,
   };
 };
 
@@ -230,7 +252,9 @@ const mapBackendCategoryToFrontend = (backendCat: any): Category => {
     productCount: backendCat.productCount || 0,
     createdAt: backendCat.createdAt || new Date().toISOString(),
     urlKey: backendCat.urlKey || '',
-    parentId: backendCat.parentId || null,
+    parentId: typeof backendCat.parentId === 'object' && backendCat.parentId
+      ? backendCat.parentId._id || backendCat.parentId.id || null
+      : backendCat.parentId || null,
     level: backendCat.level || 0,
     order: backendCat.order || 0,
   };
