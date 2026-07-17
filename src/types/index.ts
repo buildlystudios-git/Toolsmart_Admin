@@ -1,14 +1,24 @@
-// Auth Types
+export interface Address {
+  addressLine: string;
+  city: string;
+  state: string;
+  pincode: string;
+  workplaceImage?: string;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
+  isEmailVerified?: boolean;
   phone: string;
+  isPhoneNumberVerified?: boolean;
   avatar?: string;
   role: 'admin' | 'user';
   status: 'active' | 'suspended';
   registrationDate: string;
   lastLogin?: string;
+  addresses?: Address[];
 }
 
 export interface AuthState {

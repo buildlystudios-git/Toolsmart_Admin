@@ -244,11 +244,11 @@ export default function OrderDetailPage() {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                   Update Status
                 </label>
-                <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
                   <select
                     value={statusSelect}
                     onChange={(e) => setStatusSelect(e.target.value)}
-                    className="input-field py-2"
+                    className="input-field py-2 flex-1"
                   >
                     {order.orderStatus === 'APPROVED' && (
                       <option value="PROCESSING">Processing</option>
@@ -262,19 +262,20 @@ export default function OrderDetailPage() {
                     <option value="CANCELLED">Cancelled</option>
                   </select>
                   <button
-                    className="btn btn-primary justify-center w-full mt-1"
+                    className="btn btn-primary justify-center flex-shrink-0 px-4"
                     onClick={handleManualUpdate}
                     disabled={statusMutation.isPending}
+                    style={{ whiteSpace: 'nowrap' }}
                   >
                     {statusMutation.isPending ? (
-                      <span className="flex items-center gap-2">
-                        <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <span className="flex items-center gap-1.5">
+                        <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M12 22C6.48 22 2 17.52 2 12S6.48 2 12 2" />
                         </svg>
-                        Updating...
+                        Saving...
                       </span>
                     ) : (
-                      'Update Status'
+                      'Update'
                     )}
                   </button>
                 </div>

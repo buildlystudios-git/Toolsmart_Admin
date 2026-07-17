@@ -157,13 +157,6 @@ export default function CategoriesPage() {
                   </span>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={() => openEdit(cat)}>✏️</button>
-                    <button
-                      className="btn btn-ghost btn-sm btn-icon"
-                      title={cat.status === 'active' ? 'Deactivate' : 'Activate'}
-                      onClick={() => toggleStatusMutation.mutate({ id: cat.id, status: cat.status === 'active' ? 'inactive' : 'active' })}
-                    >
-                      {cat.status === 'active' ? '⏸️' : '▶️'}
-                    </button>
                     <button className="btn btn-ghost btn-sm btn-icon text-red-500" title="Delete" onClick={() => setDeleteCat(cat)}>🗑️</button>
                   </div>
                 </div>

@@ -22,20 +22,10 @@ export default function OrdersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<TableFilters>({ page: 1, limit: 8 });
-  const [deleteOrder, setDeleteOrder] = useState<Order | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['orders', filters],
     queryFn: () => ordersService.getAll(filters),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => ordersService.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      toast.success('Order deleted');
-      setDeleteOrder(null);
-    },
   });
 
   const formatStatusLabel = (s: string) => {
@@ -119,13 +109,6 @@ export default function OrdersPage() {
                         >
                           View Order
                         </button>
-                        <button
-                          className="btn btn-ghost btn-sm btn-icon text-red-500 border border-[var(--border)]"
-                          title="Delete"
-                          onClick={() => setDeleteOrder(order)}
-                        >
-                          🗑️
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -143,16 +126,6 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
-
-      <ConfirmModal
-        open={!!deleteOrder}
-        title="Delete Order"
-        message={`Delete order ${deleteOrder?.id}?`}
-        confirmLabel="Delete"
-        onConfirm={() => deleteOrder && deleteMutation.mutate(deleteOrder.id)}
-        onCancel={() => setDeleteOrder(null)}
-        isLoading={deleteMutation.isPending}
-      />
     </div>
   );
 }

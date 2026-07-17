@@ -131,11 +131,14 @@ const mapBackendUserToFrontend = (backendUser: any): User => {
     id: backendUser._id || backendUser.id || '',
     name: backendUser.fullName || backendUser.name || 'User',
     email: backendUser.email || '',
+    isEmailVerified: backendUser.isEmailVerified,
     phone: backendUser.phoneNumber || backendUser.phone || '',
+    isPhoneNumberVerified: backendUser.isPhoneNumberVerified,
     avatar: backendUser.profileImage || backendUser.avatar || undefined,
     role: backendUser.role === 'admin' ? 'admin' : 'user',
     status: backendUser.isDeleted ? 'suspended' : 'active',
     registrationDate: backendUser.createdAt || new Date().toISOString(),
+    addresses: backendUser.addresses,
   };
 };
 

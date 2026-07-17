@@ -13,7 +13,6 @@ const navItems = [
   { to: '/orders', icon: '📦', label: 'Orders' },
   { to: '/categories', icon: '🏷️', label: 'Categories' },
   { to: '/coupons', icon: '🎟️', label: 'Coupons' },
-  { to: '/settings', icon: '⚙️', label: 'Settings' },
 ];
 
 export default function Sidebar() {
@@ -113,9 +112,14 @@ function SidebarContent({ isCollapsed, user, onLogout, onToggle }: { isCollapsed
       <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
         {!isCollapsed ? (
           <div className="flex items-center gap-3 p-2 rounded-xl" style={{ background: 'var(--bg-tertiary)' }}>
-            <img src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name}`} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white flex-shrink-0"
+              style={{ background: 'var(--accent)' }}
+            >
+              AD
+            </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{user?.name}</div>
+              <div className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>Admin</div>
               <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>Administrator</div>
             </div>
             <button onClick={onLogout} className="btn btn-ghost btn-icon p-1" title="Logout">

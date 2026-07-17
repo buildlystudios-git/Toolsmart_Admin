@@ -12,23 +12,10 @@ export default function UsersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<TableFilters>({ page: 1, limit: 8, search: '', sortBy: 'name', sortOrder: 'asc' });
-  const [deleteUser, setDeleteUser] = useState<User | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['users', filters],
     queryFn: () => usersService.getAll(filters),
-  });
-
-  const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'active' | 'suspended' }) => usersService.updateStatus(id, status),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); toast.success('User status updated'); },
-    onError: () => toast.error('Failed to update status'),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => usersService.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); toast.success('User deleted'); setDeleteUser(null); },
-    onError: () => toast.error('Failed to delete user'),
   });
 
   const handleSort = (col: string) => {
@@ -118,18 +105,12 @@ export default function UsersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button className="btn btn-ghost btn-sm btn-icon" title="View" onClick={() => navigate(`/users/${user.id}`)}>
-                          👁️
-                        </button>
-                        <button
-                          className="btn btn-ghost btn-sm btn-icon"
-                          title={user.status === 'active' ? 'Suspend' : 'Activate'}
-                          onClick={() => statusMutation.mutate({ id: user.id, status: user.status === 'active' ? 'suspended' : 'active' })}
+                        <button 
+                          className="btn btn-secondary btn-sm font-semibold" 
+                          title="View Profile" 
+                          onClick={() => navigate(`/users/${user.id}`, { state: { user } })}
                         >
-                          {user.status === 'active' ? '🚫' : '✅'}
-                        </button>
-                        <button className="btn btn-ghost btn-sm btn-icon text-red-500" title="Delete" onClick={() => setDeleteUser(user)}>
-                          🗑️
+                          View Profile
                         </button>
                       </div>
                     </td>
@@ -149,16 +130,6 @@ export default function UsersPage() {
           </div>
         )}
       </div>
-
-      <ConfirmModal
-        open={!!deleteUser}
-        title="Delete User"
-        message={`Are you sure you want to delete ${deleteUser?.name}? This action cannot be undone.`}
-        confirmLabel="Delete"
-        onConfirm={() => deleteUser && deleteMutation.mutate(deleteUser.id)}
-        onCancel={() => setDeleteUser(null)}
-        isLoading={deleteMutation.isPending}
-      />
     </div>
   );
 }
