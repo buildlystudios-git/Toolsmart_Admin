@@ -13,6 +13,7 @@ const navItems = [
   { to: '/orders', icon: '📦', label: 'Orders' },
   { to: '/categories', icon: '🏷️', label: 'Categories' },
   { to: '/coupons', icon: '🎟️', label: 'Coupons' },
+  { to: '/legal', icon: '⚖️', label: 'Legal' },
 ];
 
 export default function Sidebar() {

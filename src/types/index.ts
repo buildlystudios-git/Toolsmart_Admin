@@ -148,3 +148,15 @@ export interface ApiResponse<T> {
   data: T;
   message?: string;
 }
+
+export interface LegalDocument {
+  id: string;
+  type: 'TERMS_AND_CONDITIONS' | 'PRIVACY_POLICY' | 'ABOUT_US';
+  title: string;
+  content: string;
+  version: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+

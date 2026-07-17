@@ -19,6 +19,7 @@ import {
   Coupon,
   TableFilters,
   PaginatedResponse,
+  LegalDocument,
 } from '@/types';
 
 const delay = (ms = 600) => new Promise((r) => setTimeout(r, ms));
@@ -455,3 +456,124 @@ export const couponsService = {
     await AxiosBase.delete(`/coupons/${id}`);
   },
 };
+
+// ═══════════════════════════════════════════════════════════════
+//  LEGAL & TERMS
+// ═══════════════════════════════════════════════════════════════
+let mockLegalDocuments: LegalDocument[] = [
+  {
+    id: '6a5a77a3939d51257935abcc',
+    type: 'TERMS_AND_CONDITIONS',
+    title: 'Terms and Conditions',
+    content: 'These are the terms and conditions for using our services.',
+    version: '1.0.0',
+    isActive: true,
+    createdAt: '2026-07-17T18:42:43.416Z',
+    updatedAt: '2026-07-17T18:42:43.416Z',
+  },
+  {
+    id: '6a5a77a3939d51257935abcd',
+    type: 'PRIVACY_POLICY',
+    title: 'Privacy Policy',
+    content: 'This privacy policy describes how we collect and use your data.',
+    version: '1.0.0',
+    isActive: true,
+    createdAt: '2026-07-17T18:42:43.416Z',
+    updatedAt: '2026-07-17T18:42:43.416Z',
+  },
+  {
+    id: '6a5a77a3939d51257935abce',
+    type: 'ABOUT_US',
+    title: 'About Us',
+    content: 'We are committed to delivering the best service possible.',
+    version: '1.0.0',
+    isActive: true,
+    createdAt: '2026-07-17T18:42:43.416Z',
+    updatedAt: '2026-07-17T18:42:43.416Z',
+  }
+];
+
+const mapBackendLegalToFrontend = (b: any): LegalDocument => ({
+  id: b._id || b.id || '',
+  type: b.type || 'TERMS_AND_CONDITIONS',
+  title: b.title || '',
+  content: b.content || '',
+  version: b.version || '1.0.0',
+  isActive: b.isActive !== undefined ? b.isActive : true,
+  createdAt: b.createdAt || new Date().toISOString(),
+  updatedAt: b.updatedAt || new Date().toISOString(),
+});
+
+export const legalService = {
+  getByType: async (type: 'TERMS_AND_CONDITIONS' | 'PRIVACY_POLICY' | 'ABOUT_US'): Promise<LegalDocument | null> => {
+    try {
+      const { data } = await AxiosBase.get<any>(`/terms/type/${type}`);
+      if (data) {
+        return mapBackendLegalToFrontend(data);
+      }
+      return null;
+    } catch (error: any) {
+      if (error?.status === 404 || error?.response?.status === 404) {
+        return null;
+      }
+      console.warn(`Backend /terms/type/${type} error, falling back to mock:`, error);
+      const doc = mockLegalDocuments.find((d) => d.type === type);
+      return doc || null;
+    }
+  },
+
+  create: async (payload: Partial<LegalDocument>): Promise<LegalDocument> => {
+    try {
+      const backendPayload = {
+        title: payload.title,
+        content: payload.content,
+        version: payload.version || '1.0.0',
+        isActive: payload.isActive !== undefined ? payload.isActive : true,
+        type: payload.type,
+      };
+      const { data } = await AxiosBase.post<any>('/terms', backendPayload);
+      return mapBackendLegalToFrontend(data);
+    } catch (error) {
+      console.warn(`Backend /terms create error, executing in mock mode:`, error);
+      const newDoc: LegalDocument = {
+        id: Math.random().toString(36).substring(2, 9),
+        type: payload.type || 'TERMS_AND_CONDITIONS',
+        title: payload.title || '',
+        content: payload.content || '',
+        version: payload.version || '1.0.0',
+        isActive: payload.isActive !== undefined ? payload.isActive : true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      mockLegalDocuments.push(newDoc);
+      return newDoc;
+    }
+  },
+
+  update: async (id: string, payload: Partial<LegalDocument>): Promise<LegalDocument> => {
+    try {
+      const backendPayload: any = {};
+      if (payload.title !== undefined) backendPayload.title = payload.title;
+      if (payload.content !== undefined) backendPayload.content = payload.content;
+      if (payload.version !== undefined) backendPayload.version = payload.version;
+      if (payload.isActive !== undefined) backendPayload.isActive = payload.isActive;
+      if (payload.type !== undefined) backendPayload.type = payload.type;
+
+      const { data } = await AxiosBase.patch<any>(`/terms/${id}`, backendPayload);
+      return mapBackendLegalToFrontend(data);
+    } catch (error) {
+      console.warn(`Backend /terms update error for id ${id}, executing in mock mode:`, error);
+      const idx = mockLegalDocuments.findIndex((d) => d.id === id);
+      if (idx !== -1) {
+        mockLegalDocuments[idx] = {
+          ...mockLegalDocuments[idx],
+          ...payload,
+          updatedAt: new Date().toISOString(),
+        };
+        return mockLegalDocuments[idx];
+      }
+      throw error;
+    }
+  },
+};
+
