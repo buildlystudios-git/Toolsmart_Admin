@@ -37,6 +37,8 @@ export default function CategoriesPage() {
   const [editCat, setEditCat] = useState<Category | null>(null);
   const [deleteCat, setDeleteCat] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [bulkDrawerOpen, setBulkDrawerOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const { data: categories, isLoading } = useQuery({
     queryKey: ['categories', 'list', searchQuery],
@@ -66,8 +68,21 @@ export default function CategoriesPage() {
   });
 
   const toggleStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'active' | 'inactive' }) => categoriesService.update(id, { status }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['categories'] }); toast.success('Status updated'); },
+    mutationFn: ({ id, status }: { id: string; status: 'active' | 'inactive' }) => categoriesService.update(id, { status }),
+  });
+
+  const bulkUploadMutation = useMutation({
+    mutationFn: categoriesService.bulkUpload,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast.success('Categories bulk uploaded successfully');
+      setBulkDrawerOpen(false);
+      setSelectedFile(null);
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Bulk upload failed');
+    },
   });
 
   const openEdit = (cat: Category) => {
@@ -113,7 +128,10 @@ export default function CategoriesPage() {
           <h1 className="page-title">Categories</h1>
           <p className="page-subtitle">{level1Categories.length} root categories</p>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>+ Add Category</button>
+        <div className="flex gap-2">
+          <button className="btn btn-secondary" onClick={() => setBulkDrawerOpen(true)}>📤 Bulk Upload</button>
+          <button className="btn btn-primary" onClick={openCreate}>+ Add Category</button>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -269,6 +287,109 @@ export default function CategoriesPage() {
         onCancel={() => setDeleteCat(null)}
         isLoading={deleteMutation.isPending}
       />
+
+      {/* Bulk Upload Drawer */}
+      <Drawer
+        open={bulkDrawerOpen}
+        title="Bulk Upload Categories"
+        onClose={() => {
+          if (!bulkUploadMutation.isPending) {
+            setBulkDrawerOpen(false);
+            setSelectedFile(null);
+          }
+        }}
+      >
+        <div className="space-y-5">
+          <div className="bg-[rgba(99,102,241,0.05)] border border-[rgba(99,102,241,0.15)] rounded-2xl p-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <p className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Instructions:</p>
+            <ul className="list-disc list-inside space-y-1.5 text-xs text-[var(--text-secondary)]">
+              <li>Upload a CSV file containing your categories data.</li>
+              <li>The file extension must be <strong>.csv</strong>.</li>
+              <li>Make sure fields match the category schema.</li>
+            </ul>
+          </div>
+
+          {selectedFile ? (
+            <div className="card p-4 border border-[var(--border)] bg-[var(--bg-primary)] flex items-center justify-between rounded-xl">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-3xl flex-shrink-0">📄</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{selectedFile.name}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm btn-icon text-red-500"
+                disabled={bulkUploadMutation.isPending}
+                onClick={() => setSelectedFile(null)}
+              >
+                🗑️
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-[var(--border)] hover:border-[var(--accent)] rounded-xl cursor-pointer bg-[var(--bg-primary)] transition-colors p-4">
+              <div className="flex flex-col items-center text-center space-y-2">
+                <span className="text-4xl">📤</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Select CSV File</span>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Click or drag to select a CSV file (max 10MB)</span>
+              </div>
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (!file.name.toLowerCase().endsWith('.csv')) {
+                      toast.error('Only CSV files are allowed');
+                      return;
+                    }
+                    if (file.size > 10 * 1024 * 1024) {
+                      toast.error('File size exceeds 10MB limit');
+                      return;
+                    }
+                    setSelectedFile(file);
+                  }
+                }}
+              />
+            </label>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              className="btn btn-secondary flex-1"
+              disabled={bulkUploadMutation.isPending}
+              onClick={() => {
+                setBulkDrawerOpen(false);
+                setSelectedFile(null);
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary flex-1 justify-center"
+              disabled={!selectedFile || bulkUploadMutation.isPending}
+              onClick={() => {
+                if (selectedFile) {
+                  bulkUploadMutation.mutate(selectedFile);
+                }
+              }}
+            >
+              {bulkUploadMutation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22C6.48 22 2 17.52 2 12S6.48 2 12 2" />
+                  </svg>
+                  Uploading...
+                </span>
+              ) : 'Upload File'}
+            </button>
+          </div>
+        </div>
+      </Drawer>
     </div>
   );
 }

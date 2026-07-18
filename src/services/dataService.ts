@@ -340,6 +340,13 @@ export const categoriesService = {
   delete: async (id: string): Promise<void> => {
     await AxiosBase.delete(`/categories/${id}`);
   },
+
+  bulkUpload: async (file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await AxiosBase.post('/categories/bulk-upload', formData);
+    return data;
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -409,6 +416,13 @@ export const productsService = {
     status: 'active' | 'inactive',
   ): Promise<Product> => {
     return productsService.update(id, { status });
+  },
+
+  bulkUpload: async (file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await AxiosBase.post('/products/bulk-upload', formData);
+    return data;
   },
 };
 
